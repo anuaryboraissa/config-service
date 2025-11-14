@@ -1,54 +1,98 @@
--- lookup_def
-CREATE TABLE lookup_def (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code text NOT NULL UNIQUE,
-  name text,
-  description text,
-  data_type text NOT NULL,
-  default_scope text NOT NULL DEFAULT 'GLOBAL',
-  schema_json jsonb,
-  created_by text,
-  created_at timestamptz DEFAULT now()
+-- Create Database
+CREATE DATABASE lookups WITH ENCODING 'UTF8';
+
+
+-- Create Schema
+CREATE SCHEMA IF NOT EXISTS gepg;
+
+
+CREATE TABLE gepg.currencies(
+     currency_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     currency_name VARCHAR(50) UNIQUE NOT NULL,
+     currency_code varchar(10) UNIQUE NOT NULL,
+     is_active BOOLEAN DEFAULT true NOT NULL,
+     created_by VARCHAR(50),
+     created_date TIMESTAMP DEFAULT NOW(),
+     last_modified_by VARCHAR(50),
+     last_modified_date TIMESTAMP
 );
 
--- lookup_value (versioned)
-CREATE TABLE lookup_value (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lookup_id UUID NOT NULL REFERENCES lookup_def(id) ON DELETE CASCADE,
-  tenant_id text,
-  key text NOT NULL,
-  value jsonb NOT NULL,
-  metadata jsonb,
-  effective_from timestamptz DEFAULT now(),
-  effective_to timestamptz,
-  version int NOT NULL DEFAULT 1,
-  active boolean NOT NULL DEFAULT true,
-  created_by text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  CONSTRAINT ux_lookup_key_tenant UNIQUE (lookup_id, key, tenant_id, version)
-);
-CREATE INDEX idx_lookup_key ON lookup_value (lookup_id, key);
-CREATE INDEX idx_lookup_tenant ON lookup_value (tenant_id);
 
--- outbox (for reliable event publishing)
-CREATE TABLE outbox_message (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  aggregate_type text,
-  aggregate_id UUID,
-  event_type text,
-  payload jsonb,
-  published boolean NOT NULL DEFAULT false,
-  created_at timestamptz DEFAULT now(),
-  published_at timestamptz
+CREATE TABLE gepg.gfs_codes_level_one(
+    gfs_code_level_one_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    gfs_code VARCHAR(50) UNIQUE NOT NULL,
+    gfs_code_description TEXT,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    created_by VARCHAR(50),
+    created_date TIMESTAMP DEFAULT NOW(),
+    last_modified_by VARCHAR(50),
+    last_modified_date TIMESTAMP
 );
 
--- ledger_events for auditing (optional)
-CREATE TABLE ledger_event (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  aggregate_type text,
-  aggregate_id UUID,
-  event_type text,
-  payload jsonb,
-  created_at timestamptz DEFAULT now()
+CREATE TABLE gepg.gfs_codes_level_two(
+     gfs_code_level_two_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     gfs_code VARCHAR(50) UNIQUE NOT NULL,
+     gfs_code_description TEXT,
+     gfs_code_level_one_id UUID NOT NULL REFERENCES gepg.gfs_codes_level_one(gfs_code_level_one_id) ON DELETE CASCADE,
+     is_active BOOLEAN DEFAULT true NOT NULL,
+     created_by VARCHAR(50),
+     created_date TIMESTAMP DEFAULT NOW(),
+     last_modified_by VARCHAR(50),
+     last_modified_date TIMESTAMP
 );
+
+CREATE TABLE gepg.gfs_codes_level_three(
+     gfs_code_level_three_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     gfs_code VARCHAR(50) UNIQUE NOT NULL,
+     gfs_code_description TEXT,
+     gfs_code_level_two_id UUID NOT NULL REFERENCES gepg.gfs_codes_level_two(gfs_code_level_two_id) ON DELETE CASCADE,
+     is_active BOOLEAN DEFAULT true NOT NULL,
+     created_by VARCHAR(50),
+     created_date TIMESTAMP DEFAULT NOW(),
+     last_modified_by VARCHAR(50),
+     last_modified_date TIMESTAMP
+);
+
+
+CREATE TABLE gepg.regions(
+    region_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    region_name VARCHAR(255) UNIQUE NOT NULL,
+    created_by VARCHAR(50),
+    created_date TIMESTAMP DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    last_modified_by VARCHAR(50),
+    last_modified_date TIMESTAMP
+);
+
+CREATE TABLE gepg.districts(
+     district_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     district_name VARCHAR(255) UNIQUE NOT NULL,
+     region_id UUID NOT NULL REFERENCES gepg.regions(region_id) ON DELETE CASCADE,
+     is_active BOOLEAN DEFAULT true NOT NULL,
+     created_by VARCHAR(50),
+     created_date TIMESTAMP DEFAULT NOW(),
+     last_modified_by VARCHAR(50),
+     last_modified_date TIMESTAMP
+);
+
+
+CREATE TABLE gepg.sp_category(
+     sp_category_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     sp_category_name VARCHAR(50) UNIQUE NOT NULL,
+     is_active BOOLEAN DEFAULT true NOT NULL,
+     created_by VARCHAR(50),
+     created_date TIMESTAMP DEFAULT NOW(),
+     last_modified_by VARCHAR(50),
+     last_modified_date TIMESTAMP
+);
+
+CREATE TABLE gepg.psp_category(
+     psp_category_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+     psp_category_name VARCHAR(50) UNIQUE NOT NULL,
+     is_active BOOLEAN DEFAULT true NOT NULL,
+     created_by VARCHAR(50),
+     created_date TIMESTAMP DEFAULT NOW(),
+     last_modified_by VARCHAR(50),
+     last_modified_date TIMESTAMP
+);
+
