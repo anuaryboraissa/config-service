@@ -1,4 +1,18 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: config_user
+      POSTGRES_PASSWORD: Issa123
+      POSTGRES_DB: lookups_service_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
@@ -12,26 +26,33 @@ services:
       - "2181:2181"
     volumes:
       - ./auth/jaas/zookeeper_jaas.conf:/etc/kafka/zookeeper_jaas.conf
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
     command: >
       bash -c "export KAFKA_OPTS='-Djava.security.auth.login.config=/etc/kafka/zookeeper_jaas.conf' && /etc/confluent/docker/run"
     networks:
     - microservices-network
 
 
-  kafka:
+  kafka1:
     image: confluentinc/cp-kafka:7.3.0
-    container_name: gepg-kafka
+    container_name: gepg-kafka-1
     ports:
-      - 9099:9099  # Exposes to host
+      - 9092:9092  # Exposes to host
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: SASL_PLAINTEXT://:9099
+      KAFKA_LISTENERS: SASL_PLAINTEXT://:9092
       # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://kafka:9099
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://gepg-kafka-1:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
       # SASL Authentication 
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
@@ -40,13 +61,84 @@ services:
       #authorization
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
-      KAFKA_SUPER_USERS: "User:anuary"
+      KAFKA_SUPER_USERS: "User:anuary;User:readonly"
     depends_on:
       - zookeeper
     volumes:
       - ./auth/jaas/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
       # - ./auth/libs/kafka-authorizer-3.3.1.jar:/usr/share/java/kafka/libs/kafka-authorizer-3.3.1.jar
       - ./auth/acls/client.properties:/etc/kafka/client.properties
+      - kafka_data1:/var/lib/kafka/data
+    networks:
+    - microservices-network
+  kafka2:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: gepg-kafka-2
+    ports:
+      - 9093:9093  # Exposes to host
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: SASL_PLAINTEXT://:9093
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://gepg-kafka-2:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # SASL Authentication 
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      # Per-listener SASL config
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
+      #authorization
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+      KAFKA_SUPER_USERS: "User:anuary;User:readonly"
+    depends_on:
+      - zookeeper
+    volumes:
+      - ./auth/jaas/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
+      # - ./auth/libs/kafka-authorizer-3.3.1.jar:/usr/share/java/kafka/libs/kafka-authorizer-3.3.1.jar
+      - ./auth/acls/client.properties:/etc/kafka/client.properties
+      - kafka_data2:/var/lib/kafka/data
+    networks:
+    - microservices-network
+  kafka3:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: gepg-kafka-3
+    ports:
+      - 9094:9094  # Exposes to host
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: SASL_PLAINTEXT://:9094
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://gepg-kafka-3:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # SASL Authentication 
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      # Per-listener SASL config
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
+      #authorization
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+      KAFKA_SUPER_USERS: "User:anuary;User:readonly"
+    depends_on:
+      - zookeeper
+    volumes:
+      - ./auth/jaas/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
+      # - ./auth/libs/kafka-authorizer-3.3.1.jar:/usr/share/java/kafka/libs/kafka-authorizer-3.3.1.jar
+      - ./auth/acls/client.properties:/etc/kafka/client.properties
+      - kafka_data3:/var/lib/kafka/data
     networks:
     - microservices-network
 
@@ -54,10 +146,10 @@ services:
     image: provectuslabs/kafka-ui
     container_name: gepg-kafka-ui
     ports:
-      - 8082:8082
+      - 8082:8080
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9099
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: gepg-kafka-1:9092,gepg-kafka-2:9093,gepg-kafka-3:9094
       KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
       KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
       KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username="readonly" password="readonly123";
@@ -67,28 +159,43 @@ services:
       KAFKA_UI_DISABLE_LOGIN_FORM: "false"
     networks:
     - microservices-network
-
-  config-service:
-    build: ./config-service
-    container_name: config-service
+    
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-network
+  lookups-service:
+    build:
+      context: ./lookups-service
+      dockerfile: Dockerfile.dev
+    container_name: lookups-service
     volumes:
-      - ./config-service/src:/app/src  # Mount your source code for real-time syncing
-      - ./config-service/src/pom.xml:/app/pom.xml  # Mount your source code for real-time syncing
-      - ~/.m2:/root/.m2    
+      - ./lookups-service/src:/app/src
+      - ./lookups-service/pom.xml:/app/pom.xml
+      - ~/.m2:/root/.m2
     ports:
       - "9001:9001"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - JAVA_OPTS=-Dspring.devtools.restart.enabled=true  # Enable devtools
       - SPRING_PROFILES_ACTIVE=dev
-    depends_on:
-      - kafka
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
     networks:
       - microservices-network
+
+
+
 
 networks:
   microservices-network:
     driver: bridge
 
 volumes:
-  kafka_data:
+  postgres_data:
+  kafka_data1:
+  kafka_data2:
+  kafka_data3:
+  zookeeper_data:
+  zookeeper_log:

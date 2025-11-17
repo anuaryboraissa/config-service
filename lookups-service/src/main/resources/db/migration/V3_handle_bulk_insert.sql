@@ -1,0 +1,17 @@
+-- CREATE TABLE import_job (
+--   job_id UUID PRIMARY KEY,
+--   filename TEXT,
+--   uploader TEXT,
+--   uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+--   status TEXT NOT NULL, -- PENDING, RUNNING, COMPLETED, FAILED, CANCELLED
+--   total_rows BIGINT DEFAULT 0,
+--   processed_rows BIGINT DEFAULT 0,
+--   inserted_rows BIGINT DEFAULT 0,
+--   failed_rows BIGINT DEFAULT 0,
+--   error_summary JSONB,
+--   file_location TEXT, -- object storage URL or local path
+--   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+--   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+-- );
+
+-- CREATE INDEX idx_import_job_status ON import_job(status);
